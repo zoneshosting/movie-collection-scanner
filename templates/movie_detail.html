@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Movie Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ movie.title }}</li>
+                </ol>
+            </nav>
+            
+            <div class="card mb-4">
+                <div class="row g-0">
+                    <div class="col-md-4">
+                        {% if movie.poster_url %}
+                            <img src="{{ movie.poster_url }}" class="img-fluid rounded-start movie-poster" alt="{{ movie.title }}">
+                        {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center h-100 rounded-start">
+                                <span class="text-muted">No Poster</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h1 class="card-title">{{ movie.title }}</h1>
+                                <span class="badge {{ 'bg-success' if movie.watch_status else 'bg-secondary' }} p-2" 
+                                      onclick="toggleWatchStatus({{ movie.movie_id }}, this)" 
+                                      style="cursor: pointer;" 
+                                      data-bs-toggle="tooltip" 
+                                      title="Click to toggle watch status">
+                                    {{ 'Watched' if movie.watch_status else 'Unwatched' }}
+                                </span>
+                            </div>
+                            
+                            <h3 class="card-subtitle mb-3 text-muted">
+                                {% if movie.release_year %}{{ movie.release_year }}{% endif %}
+                                {% if movie.runtime_minutes %} • {{ movie.runtime_minutes }} min{% endif %}
+                                {% if movie.format %} • {{ movie.format }}{% endif %}
+                            </h3>
+                            
+                            {% if movie.genres %}
+                                <div class="mb-3">
+                                    {% for genre in movie.genres %}
+                                        <span class="genre-pill">{{ genre.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if movie.people %}
+                                <div class="mb-3">
+                                    <h5>Directors:</h5>
+                                    <p>
+                                        {% set directors = movie.people|selectattr('MoviePerson.role_type', 'equalto', 'director')|list %}
+                                        {% if directors %}
+                                            {{ directors|map(attribute='name')|join(', ') }}
+                                        {% else %}
+                                            <em>Unknown</em>
+                                        {% endif %}
+                                    </p>
+                                    
+                                    <h5>Cast:</h5>
+                                    <p>
+                                        {% set actors = movie.people|selectattr('MoviePerson.role_type', 'equalto', 'actor')|list %}
+                                        {% if actors %}
+                                            {{ actors|map(attribute='name')|join(', ') }}
+                                        {% else %}
+                                            <em>Unknown</em>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            {% endif %}
+                            
+                            {% if movie.synopsis %}
+                                <h5>Synopsis:</h5>
+                                <p class="card-text">{{ movie.synopsis }}</p>
+                            {% endif %}
+                            
+                            {% if movie.personal_notes %}
+                                <h5>Personal Notes:</h5>
+                                <p class="card-text">{{ movie.personal_notes }}</p>
+                            {% endif %}
+                            
+                            {% if movie.upc or movie.isbn or movie.imdb_id or movie.tmdb_id %}
+                                <h5>Identifiers:</h5>
+                                <ul class="list-unstyled">
+                                    {% if movie.upc %}<li><strong>UPC:</strong> {{ movie.upc }}</li>{% endif %}
+                                    {% if movie.isbn %}<li><strong>ISBN:</strong> {{ movie.isbn }}</li>{% endif %}
+                                    {% if movie.imdb_id %}
+                                        <li>
+                                            <strong>IMDB:</strong> 
+                                            <a href="https://www.imdb.com/title/{{ movie.imdb_id }}/" target="_blank">
+                                                {{ movie.imdb_id }}
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    {% if movie.tmdb_id %}
+                                        <li>
+                                            <strong>TMDB:</strong> 
+                                            <a href="https://www.themoviedb.org/movie/{{ movie.tmdb_id }}" target="_blank">
+                                                {{ movie.tmdb_id }}
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            {% endif %}
+                            
+                            <div class="mt-4">
+                                <p class="text-muted">
+                                    <small>Added on {{ format_date(movie.date_added) }}</small>
+                                    {% if movie.date_added != movie.last_modified %}
+                                        <small> • Last updated on {{ format_date(movie.last_modified) }}</small>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <a href="{{ url_for('edit_movie', movie_id=movie.movie_id) }}" class="btn btn-outline-primary">Edit</a>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete "{{ movie.title }}" from your collection? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_movie', movie_id=movie.movie_id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Search by Identifier{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Search by Identifier</h2>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Search for movies using UPC, ISBN, IMDB ID, or other identifiers.</p>
+                    
+                    <form id="identifier-search-form" method="POST" action="{{ url_for('search_identifier') }}">
+                        <div class="mb-3">
+                            <label for="identifier-type" class="form-label">Identifier Type</label>
+                            <select class="form-select" id="identifier-type" name="identifier_type" required>
+                                <option value="upc">UPC (Universal Product Code)</option>
+                                <option value="isbn">ISBN (International Standard Book Number)</option>
+                                <option value="imdb_id">IMDB ID</option>
+                                <option value="tmdb_id">TMDB ID</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="identifier-value" class="form-label">Identifier Value</label>
+                            <input type="text" class="form-control" id="identifier-value" name="identifier_value" required>
+                            <div class="form-text">Enter the identifier value without spaces or special characters.</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </form>
+                    
+                    <div id="search-results" class="mt-4">
+                        {% if results %}
+                            <h3>Search Results</h3>
+                            {% if results.found %}
+                                <div class="card mb-3">
+                                    <div class="row g-0">
+                                        <div class="col-md-4">
+                                            {% if results.poster_url %}
+                                                <img src="{{ results.poster_url }}" class="img-fluid rounded-start" alt="{{ results.title }}">
+                                            {% else %}
+                                                <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                                    <span class="text-muted">No Poster</span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-8">
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ results.title }}</h5>
+                                                <p class="card-text">
+                                                    <small class="text-muted">{{ results.release_year }}</small>
+                                                </p>
+                                                <p class="card-text">{{ results.synopsis|truncate(200) }}</p>
+                                                <form action="{{ url_for('add_movie_from_search') }}" method="POST">
+                                                    <input type="hidden" name="movie_data" value="{{ results.json_data }}">
+                                                    <button type="submit" class="btn btn-success">Add to Collection</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    No results found for this identifier. Please check the value and try again, or use manual entry.
+                                </div>
+                                <a href="{{ url_for('add_movie') }}" class="btn btn-outline-primary">Manual Entry</a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

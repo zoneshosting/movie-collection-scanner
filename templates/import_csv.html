@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Import CSV{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Import Movies from CSV</h2>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Upload a CSV file to bulk import movies to your collection.</p>
+                    
+                    <div class="alert alert-info">
+                        <h5>CSV Format Requirements</h5>
+                        <p>Your CSV file should include the following columns:</p>
+                        <ul>
+                            <li><strong>title</strong> (required): Movie title</li>
+                            <li><strong>release_year</strong>: Year the movie was released</li>
+                            <li><strong>director</strong>: Movie director(s), separate multiple with commas</li>
+                            <li><strong>cast</strong>: Main actors, separate multiple with commas</li>
+                            <li><strong>genre</strong>: Movie genre(s), separate multiple with commas</li>
+                            <li><strong>runtime_minutes</strong>: Duration in minutes</li>
+                            <li><strong>synopsis</strong>: Brief description of the movie</li>
+                            <li><strong>format</strong>: Format (DVD, Blu-ray, Digital, etc.)</li>
+                            <li><strong>upc</strong>: UPC barcode</li>
+                            <li><strong>isbn</strong>: ISBN (for movie books)</li>
+                            <li><strong>imdb_id</strong>: IMDB ID</li>
+                            <li><strong>tmdb_id</strong>: TMDB ID</li>
+                            <li><strong>poster_url</strong>: URL to movie poster image</li>
+                            <li><strong>watch_status</strong>: "watched" or "unwatched"</li>
+                            <li><strong>personal_notes</strong>: Your notes about the movie</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <a href="{{ url_for('download_csv_template') }}" class="btn btn-outline-primary">Download CSV Template</a>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('import_csv') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="csv-file" class="form-label">Select CSV File</label>
+                            <input class="form-control" type="file" id="csv-file" name="csv_file" accept=".csv" required onchange="validateCsvFile(this)">
+                            <div class="form-text">Maximum file size: 10MB</div>
+                            <div id="file-name" class="mt-2"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="skip-duplicates" name="skip_duplicates" checked>
+                                <label class="form-check-label" for="skip-duplicates">
+                                    Skip duplicate movies (based on title and release year)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Import Movies</button>
+                    </form>
+                    
+                    {% if import_results %}
+                        <div class="mt-4">
+                            <h3>Import Results</h3>
+                            <div class="alert alert-{{ 'success' if import_results.success else 'danger' }}">
+                                <p>{{ import_results.message }}</p>
+                                <ul>
+                                    <li>Total records: {{ import_results.total }}</li>
+                                    <li>Successfully imported: {{ import_results.imported }}</li>
+                                    <li>Skipped (duplicates): {{ import_results.skipped }}</li>
+                                    <li>Failed: {{ import_results.failed }}</li>
+                                </ul>
+                                {% if import_results.errors %}
+                                    <h5>Errors:</h5>
+                                    <ul>
+                                        {% for error in import_results.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                            <a href="{{ url_for('index') }}" class="btn btn-primary">View Collection</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

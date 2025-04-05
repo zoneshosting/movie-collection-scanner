@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Movies{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Search Movies</h2>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('search') }}">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" name="query" value="{{ query }}" placeholder="Search by title, director, actor..." required>
+                            <button class="btn btn-primary" type="submit">Search</button>
+                        </div>
+                    </form>
+                    
+                    {% if query %}
+                        <h3 class="mt-4">Results for "{{ query }}"</h3>
+                        
+                        {% if results %}
+                            <div class="row row-cols-1 row-cols-md-2 g-4 mt-2">
+                                {% for movie in results %}
+                                    <div class="col">
+                                        <div class="card h-100">
+                                            <div class="row g-0">
+                                                <div class="col-md-4">
+                                                    {% if movie.poster_url %}
+                                                        <img src="{{ movie.poster_url }}" class="img-fluid rounded-start" alt="{{ movie.title }}">
+                                                    {% else %}
+                                                        <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                                            <span class="text-muted">No Poster</span>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <div class="card-body">
+                                                        <h5 class="card-title">{{ movie.title }}</h5>
+                                                        <p class="card-text">
+                                                            <small class="text-muted">{{ movie.release_year }}</small>
+                                                        </p>
+                                                        <p class="card-text">{{ movie.synopsis|truncate(100) }}</p>
+                                                        <form action="{{ url_for('add_movie_from_search') }}" method="POST">
+                                                            <input type="hidden" name="movie_data" value="{{ movie.json_data }}">
+                                                            <button type="submit" class="btn btn-sm btn-success">Add to Collection</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info mt-3">
+                                No movies found matching "{{ query }}". Try a different search term or use one of the options below.
+                            </div>
+                            <div class="mt-3">
+                                <a href="{{ url_for('search_identifier') }}" class="btn btn-outline-primary me-2">Search by UPC/ISBN</a>
+                                <a href="{{ url_for('add_movie') }}" class="btn btn-outline-secondary">Manual Entry</a>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

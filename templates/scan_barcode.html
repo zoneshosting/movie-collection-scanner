@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+
+{% block title %}Scan Barcode | Movie Collection{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Additional page-specific styles */
+    #result-section {
+        margin-top: 20px;
+        display: none;
+    }
+    
+    .result-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    
+    .result-card-body {
+        padding: 15px;
+    }
+    
+    .modal-backdrop {
+        z-index: 1040;
+    }
+    
+    .modal-content {
+        z-index: 1050;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Scan Movie Barcode</h1>
+            <p class="text-muted">Scan a UPC or ISBN barcode to add movies to your collection</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Collection
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="scanner-tab" data-bs-toggle="tab" href="#scanner-pane">
+                                <i class="fas fa-camera"></i> Scan with Camera
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="manual-tab" data-bs-toggle="tab" href="#manual-pane">
+                                <i class="fas fa-keyboard"></i> Enter Manually
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-body">
+                    <div class="tab-content">
+                        <!-- Camera Scanner Tab -->
+                        <div class="tab-pane fade show active" id="scanner-pane">
+                            <div class="scanner-instructions">
+                                <p><i class="fas fa-info-circle"></i> Position the barcode in front of your camera</p>
+                            </div>
+                            
+                            <div class="scanner-container">
+                                <div id="barcode-scanner"></div>
+                                
+                                <div id="scanner-controls">
+                                    <button id="toggle-camera-btn" class="scanner-btn" title="Switch Camera">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button id="toggle-flash-btn" class="scanner-btn" title="Toggle Flash">
+                                        <i class="fas fa-bolt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 mt-3">
+                                <button id="start-scanner-btn" class="btn btn-primary">
+                                    <i class="fas fa-play"></i> Start Camera
+                                </button>
+                                <button id="stop-scanner-btn" class="btn btn-secondary" style="display: none;">
+                                    <i class="fas fa-stop"></i> Stop Camera
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Entry Tab -->
+                        <div class="tab-pane fade" id="manual-pane">
+                            <form id="manual-barcode-form">
+                                <div class="mb-3">
+                                    <label for="identifier-type" class="form-label">Identifier Type</label>
+                                    <select class="form-select" id="identifier-type" name="identifier_type" required>
+                                        <option value="upc">UPC (Universal Product Code)</option>
+                                        <option value="isbn">ISBN (International Standard Book Number)</option>
+                                        <option value="imdb_id">IMDb ID</option>
+                                        <option value="tmdb_id">TMDb ID</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="identifier-value" class="form-label">Identifier Value</label>
+                                    <input type="text" class="form-control" id="identifier-value" name="identifier_value" 
+                                           placeholder="Enter barcode number" required>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div id="result-section" class="mt-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Movie Found!</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <img id="result-poster" src="" class="img-fluid rounded" alt="Movie Poster" 
+                                     style="max-height: 250px;">
+                            </div>
+                            <div class="col-md-8">
+                                <h4 id="result-title"></h4>
+                                <p id="result-year" class="text-muted"></p>
+                                <div id="result-details"></div>
+                                
+                                <form id="add-movie-form" method="post" action="{{ url_for('add_movie_from_search') }}">
+                                    <input type="hidden" id="movie-data" name="movie_data">
+                                    <button type="submit" class="btn btn-success mt-3">
+                                        <i class="fas fa-plus"></i> Add to Collection
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- No Results Message -->
+            <div id="no-result-message" class="alert alert-warning mt-4" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i> No movie found with this barcode. 
+                <a href="{{ url_for('add_movie') }}">Add it manually</a> instead.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Permission Denied Modal -->
+<div class="modal fade" id="permission-denied-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Camera Access Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please allow camera access to scan barcodes. You can change this in your browser settings.</p>
+                <div class="alert alert-info">
+                    <strong>How to enable camera access:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Look for the camera icon in your browser's address bar</li>
+                        <li>Click it and select "Allow" for camera</li>
+                        <li>Refresh the page after changing permissions</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='js/barcode_scanner.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize variables
+        let scanner = null;
+        const startBtn = document.getElementById('start-scanner-btn');
+        const stopBtn = document.getElementById('stop-scanner-btn');
+        const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+        const toggleFlashBtn = document.getElementById('toggle-flash-btn');
+        const manualForm = document.getElementById('manual-barcode-form');
+        const resultSection = document.getElementById('result-section');
+        const noResultMessage = document.getElementById('no-result-message');
+        
+        // Start scanner button click handler
+        startBtn.addEventListener('click', function() {
+            if (!scanner) {
+                scanner = new MovieBarcodeScanner('barcode-scanner');
+                scanner.init(onBarcodeDetected, onScanError);
+            }
+            
+            scanner.startScanner(false); // Start with back camera by default
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+        });
+        
+        // Stop scanner button click handler
+        stopBtn.addEventListener('click', function() {
+            if (scanner) {
+                scanner.stopScanner();
+                startBtn.style.display = 'block';
+                stopBtn.style.display = 'none';
+            }
+        });
+        
+        // Toggle camera button click handler
+        toggleCameraBtn.addEventListener('click', function() {
+            if (scanner) {
+                scanner.toggleCamera();
+            }
+        });
+        
+        // Toggle flash button click handler
+        toggleFlashBtn.addEventListener('click', function() {
+            if (scanner) {
+                scanner.toggleFlash();
+            }
+        });
+        
+        // Tab change event handler
+        document.querySelectorAll('.nav-link').forEach(tab => {
+            tab.addEventListener('click', function() {
+                if (scanner && this.id === 'manual-tab') {
+                    // Stop scanner when switching to manual tab
+                    scanner.stopScanner();
+                    startBtn.style.display = 'block';
+                    stopBtn.style.display = 'none';
+                }
+            });
+        });
+        
+        // Manual form submit handler
+        manualForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const identifierType = document.getElementById('identifier-type').value;
+            const identifierValue = document.getElementById('identifier-value').value.trim();
+            
+            if (identifierValue) {
+                searchByIdentifier(identifierType, identifierValue);
+            }
+        });
+        
+        // Barcode detected callback
+        function onBarcodeDetected(decodedText, decodedResult) {
+            // Play a success sound
+            playBeepSound();
+            
+            // Determine identifier type from format
+            let identifierType = 'upc';
+            const format = decodedResult.format ? decodedResult.format.format : null;
+            
+            if (format) {
+                if (['EAN_13', 'UPC_A', 'UPC_E'].includes(format)) {
+                    identifierType = 'upc';
+                } else if (format === 'EAN_8') {
+                    // Some ISBN can be in EAN_8 format
+                    identifierType = 'isbn';
+                }
+            }
+            
+            // Search for the movie using the decoded barcode
+            searchByIdentifier(identifierType, decodedText);
+        }
+        
+        // Scan error callback
+        function onScanError(errorMessage) {
+            console.warn('Scan error:', errorMessage);
+            
+            // Check if error is related to camera permissions
+            if (errorMessage.includes('permission') || errorMessage.includes('PermissionDenied')) {
+                scanner.stopScanner();
+                startBtn.style.display = 'block';
+                stopBtn.style.display = 'none';
+                
+                // Show permission denied modal
+                const permissionModal = new bootstrap.Modal(document.getElementById('permission-denied-modal'));
+                permissionModal.show();
+            }
+        }
+        
+        // Search by identifier function
+        function searchByIdentifier(identifierType, identifierValue) {
+            // Show loading state
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            document.querySelector('.scanner-instructions').textContent = 'Searching...';
+            
+            // Reset result displays
+            resultSection.style.display = 'none';
+            noResultMessage.style.display = 'none';
+            
+            // Make AJAX request to search endpoint
+            fetch(`/api/search/${identifierType}/${identifierValue}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.movie) {
+                        displayMovieResult(data.movie);
+                    } else {
+                        // Show no results message
+                        noResultMessage.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching by identifier:', error);
+                    noResultMessage.style.display = 'block';
+                })
+                .finally(() => {
+                    // Reset loading state
+                    startBtn.disabled = false;
+                    stopBtn.disabled = false;
+                    document.querySelector('.scanner-instructions').textContent = 
+                        'Position the barcode in front of your camera';
+                });
+        }
+        
+        // Display movie result function
+        function displayMovieResult(movie) {
+            // Populate result fields
+            document.getElementById('result-title').textContent = movie.title;
+            document.getElementById('result-year').textContent = 
+                movie.release_year ? `(${movie.release_year})` : '';
+            
+            // Set poster image
+            const posterImg = document.getElementById('result-poster');
+            if (movie.poster_url) {
+                posterImg.src = movie.poster_url;
+                posterImg.style.display = 'block';
+            } else {
+                posterImg.style.display = 'none';
+            }
+            
+            // Build details HTML
+            let detailsHtml = '';
+            
+            if (movie.directors && movie.directors.length) {
+                detailsHtml += `<p><strong>Director:</strong> ${movie.directors.join(', ')}</p>`;
+            }
+            
+            if (movie.genres && movie.genres.length) {
+                detailsHtml += `<p><strong>Genres:</strong> ${movie.genres.join(', ')}</p>`;
+            }
+            
+            if (movie.runtime_minutes) {
+                detailsHtml += `<p><strong>Runtime:</strong> ${movie.runtime_minutes} minutes</p>`;
+            }
+            
+            if (movie.synopsis) {
+                detailsHtml += `<p>${movie.synopsis.substring(0, 150)}${movie.synopsis.length > 150 ? '...' : ''}</p>`;
+            }
+            
+            document.getElementById('result-details').innerHTML = detailsHtml;
+            
+            // Set hidden form field with movie data
+            document.getElementById('movie-data').value = movie.json_data || JSON.stringify(movie);
+            
+            // Show result section
+            resultSection.style.display = 'block';
+            
+            // If scanner is running, stop it
+            if (scanner && scanner.isScanning) {
+                scanner.stopScanner();
+                startBtn.style.display = 'block';
+                stopBtn.style.display = 'none';
+            }
+            
+            // Scroll to results
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Play beep sound function
+        function playBeepSound() {
+            const beep = new Audio('/static/sounds/beep.mp3');
+            beep.volume = 0.5;
+            beep.play().catch(err => console.warn('Could not play audio:', err));
+        }
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', function() {
+            if (scanner) {
+                scanner.dispose();
+            }
+        });
+    });
+</script>
+{% endblock %}

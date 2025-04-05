@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}Collection: {{ collection.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('collections') }}">Collections</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ collection.name }}</li>
+                </ol>
+            </nav>
+            <h1>{{ collection.name }}</h1>
+            {% if collection.description %}
+                <p class="lead">{{ collection.description }}</p>
+            {% endif %}
+        </div>
+        <div class="col-md-4 text-end">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editCollectionModal">
+                Edit Collection
+            </button>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCollectionModal">
+                Delete
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Movies in this Collection</h5>
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addMovieToCollectionModal">
+                            Add Movies
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if collection.movies %}
+                        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+                            {% for movie in collection.movies %}
+                                <div class="col">
+                                    <div class="card h-100">
+                                        {% if movie.poster_url %}
+                                            <img src="{{ movie.poster_url }}" class="card-img-top" alt="{{ movie.title }}">
+                                        {% else %}
+                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                                <span class="text-muted">No Poster</span>
+                                            </div>
+                                        {% endif %}
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{ movie.title }}</h5>
+                                            <h6 class="card-subtitle mb-2 text-muted">{{ movie.release_year }}</h6>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">{{ movie.format }}</small>
+                                                {% if movie.watch_status %}
+                                                    <span class="badge bg-success">Watched</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Unwatched</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="card-footer d-flex justify-content-between">
+                                            <a href="{{ url_for('movie_detail', movie_id=movie.movie_id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                            <form action="{{ url_for('remove_from_collection', collection_id=collection.collection_id, movie_id=movie.movie_id) }}" method="POST">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <p>This collection is empty. Add movies to get started.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Collection Modal -->
+<div class="modal fade" id="editCollectionModal" tabindex="-1" aria-labelledby="editCollectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCollectionModalLabel">Edit Collection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('edit_collection', collection_id=collection.collection_id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="collection-name" class="form-label">Collection Name</label>
+                        <input type="text" class="form-control" id="collection-name" name="name" value="{{ collection.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="collection-description" class="form-label">Description (optional)</label>
+                        <textarea class="form-control" id="collection-description" name="description" rows="3">{{ collection.description }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Collection Modal -->
+<div class="modal fade" id="deleteCollectionModal" tabindex="-1" aria-labelledby="deleteCollectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCollectionModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the collection "{{ collection.name }}"? This will not delete the movies themselves, only the collection.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_collection', collection_id=collection.collection_id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete Collection</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Movie to Collection Modal -->
+<div class="modal fade" id="addMovieToCollectionModal" tabindex="-1" aria-labelledby="addMovieToCollectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMovieToCollectionModalLabel">Add Movies to Collection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_to_collection', collection_id=collection.collection_id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="movie-search" placeholder="Search movies...">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Select</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Year</th>
+                                    <th scope="col">Format</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movie in all_movies %}
+                                    {% if movie not in collection.movies %}
+                                        <tr>
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="movie_ids" value="{{ movie.movie_id }}" id="movie-{{ movie.movie_id }}">
+                                                </div>
+                                            </td>
+                                            <td>{{ movie.title }}</td>
+                                            <td>{{ movie.release_year }}</td>
+                                            <td>{{ movie.format }}</td>
+                                        </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Selected Movies</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter movies in the add movies modal
+    document.getElementById('movie-search').addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        const tableRows = document.querySelectorAll('#addMovieToCollectionModal tbody tr');
+        
+        tableRows.forEach(row => {
+            const title = row.cells[1].textContent.toLowerCase();
+            if (title.includes(searchText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}
